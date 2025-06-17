@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { LogOut, Mail, Users, Send, Eye, RefreshCw } from 'lucide-react';
+import { LogOut, Mail, Users, Send, Eye, RefreshCw, AlertCircle } from 'lucide-react';
 
 interface Employee {
   id: string;
@@ -26,6 +26,7 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchEmployees();
@@ -33,13 +34,22 @@ const AdminDashboard = () => {
 
   const fetchEmployees = async () => {
     setRefreshing(true);
+    setError(null);
+    
     try {
+      console.log('Fetching employees...');
+      
       const { data, error } = await supabase
         .from('employees')
         .select('*')
         .order('pillar', { ascending: true });
 
-      if (error) throw error;
+      console.log('Supabase response:', { data, error });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
 
       setEmployees(data || []);
       
@@ -51,11 +61,14 @@ const AdminDashboard = () => {
         title: 'Success',
         description: `Loaded ${data?.length || 0} employees across ${uniquePillars.length} pillars`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching employees:', error);
+      const errorMessage = error?.message || 'Failed to fetch employee data';
+      setError(errorMessage);
+      
       toast({
         title: 'Error',
-        description: 'Failed to fetch employee data',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -139,6 +152,24 @@ const AdminDashboard = () => {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Error Display */}
+        {error && (
+          <Card className="mb-6 border-red-200 bg-red-50">
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-2 text-red-700">
+                <AlertCircle size={20} />
+                <div>
+                  <p className="font-medium">Database Connection Error</p>
+                  <p className="text-sm text-red-600 mt-1">{error}</p>
+                  <p className="text-sm text-red-600 mt-2">
+                    Please check your database connection and ensure the employees table exists.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Email Composition */}
           <div className="lg:col-span-2 space-y-6">
@@ -172,11 +203,26 @@ const AdminDashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {pillars.length === 0 ? (
+                {error ? (
+                  <div className="text-center py-8">
+                    <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+                    <p className="text-red-600">Unable to load pillars</p>
+                    <p className="text-sm text-red-500 mt-2">Fix the database connection to see pillar options</p>
+                  </div>
+                ) : pillars.length === 0 ? (
                   <div className="text-center py-8">
                     <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500">No pillars found in the database</p>
                     <p className="text-sm text-gray-400 mt-2">Add employees to see pillar options</p>
+                    <Button 
+                      onClick={fetchEmployees} 
+                      variant="outline" 
+                      className="mt-4"
+                      disabled={refreshing}
+                    >
+                      <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                      Refresh Data
+                    </Button>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
