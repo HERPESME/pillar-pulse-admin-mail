@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { LogOut, Mail, Users, Send, Eye } from 'lucide-react';
+import { LogOut, Mail, Users, Send, Eye, RefreshCw } from 'lucide-react';
 
 interface Employee {
   id: string;
@@ -26,12 +25,14 @@ const AdminDashboard = () => {
   const [selectedPillar, setSelectedPillar] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchEmployees();
   }, []);
 
   const fetchEmployees = async () => {
+    setRefreshing(true);
     try {
       const { data, error } = await supabase
         .from('employees')
@@ -42,9 +43,14 @@ const AdminDashboard = () => {
 
       setEmployees(data || []);
       
-      // Extract unique pillars
+      // Extract unique pillars dynamically
       const uniquePillars = [...new Set(data?.map(emp => emp.pillar) || [])];
       setPillars(uniquePillars);
+      
+      toast({
+        title: 'Success',
+        description: `Loaded ${data?.length || 0} employees across ${uniquePillars.length} pillars`,
+      });
     } catch (error) {
       console.error('Error fetching employees:', error);
       toast({
@@ -52,6 +58,8 @@ const AdminDashboard = () => {
         description: 'Failed to fetch employee data',
         variant: 'destructive',
       });
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -111,10 +119,21 @@ const AdminDashboard = () => {
               <Mail className="h-8 w-8 text-blue-600" />
               <h1 className="text-xl font-semibold text-gray-900">Employee Email Portal</h1>
             </div>
-            <Button variant="outline" onClick={signOut} className="flex items-center space-x-2">
-              <LogOut size={16} />
-              <span>Sign Out</span>
-            </Button>
+            <div className="flex items-center space-x-3">
+              <Button 
+                variant="outline" 
+                onClick={fetchEmployees}
+                disabled={refreshing}
+                className="flex items-center space-x-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </Button>
+              <Button variant="outline" onClick={signOut} className="flex items-center space-x-2">
+                <LogOut size={16} />
+                <span>Sign Out</span>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -143,48 +162,57 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Pillar Buttons */}
+            {/* Dynamic Pillar Buttons */}
             <Card>
               <CardHeader>
                 <CardTitle>Send to Pillar</CardTitle>
                 <CardDescription>
-                  Click a pillar button to send the email to all employees in that group
+                  Click a pillar button to send the email to all employees in that group. 
+                  Pillars are automatically detected from the employee database.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {pillars.map((pillar) => {
-                    const employeeCount = getEmployeesByPillar(pillar).length;
-                    return (
-                      <div key={pillar} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Badge variant="secondary" className="text-sm">
-                            {pillar} ({employeeCount} employees)
-                          </Badge>
+                {pillars.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">No pillars found in the database</p>
+                    <p className="text-sm text-gray-400 mt-2">Add employees to see pillar options</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {pillars.map((pillar) => {
+                      const employeeCount = getEmployeesByPillar(pillar).length;
+                      return (
+                        <div key={pillar} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Badge variant="secondary" className="text-sm">
+                              {pillar} ({employeeCount} employees)
+                            </Badge>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button
+                              onClick={() => handlePreview(pillar)}
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 flex items-center space-x-2"
+                            >
+                              <Eye size={16} />
+                              <span>Preview</span>
+                            </Button>
+                            <Button
+                              onClick={() => handleSendEmail(pillar)}
+                              disabled={loading || !emailContent.trim()}
+                              className="flex-1 flex items-center space-x-2"
+                            >
+                              <Send size={16} />
+                              <span>{loading ? 'Sending...' : 'Send'}</span>
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex space-x-2">
-                          <Button
-                            onClick={() => handlePreview(pillar)}
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 flex items-center space-x-2"
-                          >
-                            <Eye size={16} />
-                            <span>Preview</span>
-                          </Button>
-                          <Button
-                            onClick={() => handleSendEmail(pillar)}
-                            disabled={loading || !emailContent.trim()}
-                            className="flex-1 flex items-center space-x-2"
-                          >
-                            <Send size={16} />
-                            <span>{loading ? 'Sending...' : 'Send'}</span>
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

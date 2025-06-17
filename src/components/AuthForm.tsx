@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -32,7 +31,7 @@ const AuthForm = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Admin Portal</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">Employee Portal</CardTitle>
           <CardDescription className="text-center">
             Sign in to access the employee email system
           </CardDescription>
@@ -44,7 +43,7 @@ const AuthForm = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@company.com"
+                placeholder="your.email@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
