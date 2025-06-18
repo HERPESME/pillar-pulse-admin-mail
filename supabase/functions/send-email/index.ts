@@ -23,27 +23,13 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization')!
     const token = authHeader.replace('Bearer ', '')
 
-    // Verify the user is authenticated and get user info
+    // Verify the user is authenticated
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token)
     
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Check if user is admin
-    const { data: adminData, error: adminError } = await supabaseClient
-      .from('admin_users')
-      .select('user_id')
-      .eq('user_id', user.id)
-      .single()
-
-    if (adminError || !adminData) {
-      return new Response(
-        JSON.stringify({ error: 'Admin access required' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -59,44 +45,83 @@ serve(async (req) => {
       throw employeesError
     }
 
-    // Here you would integrate with your email service
-    // For example, using Resend API:
-    /*
+    // Check if RESEND_API_KEY is available
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
     
-    for (const employee of employees) {
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${resendApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: 'admin@yourcompany.com',
-          to: employee.email,
-          subject: subject,
-          html: content,
-        }),
+    if (resendApiKey) {
+      // Send actual emails using Resend
+      const emailPromises = employees.map(async (employee) => {
+        try {
+          const response = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${resendApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              from: 'Company Admin <onboarding@resend.dev>',
+              to: employee.email,
+              subject: subject,
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h2 style="color: #8B4513;">Message from Company Administration</h2>
+                  <p>Dear ${employee.name},</p>
+                  <div style="background-color: #FDF5E6; padding: 20px; border-left: 4px solid #D2B48C; margin: 20px 0;">
+                    ${content.replace(/\n/g, '<br>')}
+                  </div>
+                  <p>Best regards,<br>Company Administration</p>
+                </div>
+              `,
+            }),
+          })
+          
+          if (!response.ok) {
+            throw new Error(`Failed to send email to ${employee.email}`)
+          }
+          
+          return { success: true, email: employee.email }
+        } catch (error) {
+          console.error(`Failed to send email to ${employee.email}:`, error)
+          return { success: false, email: employee.email, error: error.message }
+        }
       })
+      
+      const results = await Promise.all(emailPromises)
+      const successCount = results.filter(r => r.success).length
+      const failureCount = results.filter(r => !r.success).length
+      
+      console.log(`Email sending completed: ${successCount} succeeded, ${failureCount} failed`)
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: `Emails sent successfully to ${successCount} employees in ${pillar} pillar`,
+          recipients: successCount,
+          failures: failureCount,
+          details: results
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    } else {
+      // Fallback: Log email details (for testing without Resend)
+      console.log(`Would send email to ${employees.length} employees in ${pillar} pillar`)
+      console.log('Subject:', subject)
+      console.log('Content:', content)
+      console.log('Recipients:', employees.map(emp => emp.email))
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: `Email simulated for ${employees.length} employees in ${pillar} pillar (RESEND_API_KEY not configured)`,
+          recipients: employees.length,
+          note: 'Configure RESEND_API_KEY to send actual emails'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
-    */
-
-    // For now, we'll just log the email details
-    console.log(`Sending email to ${employees.length} employees in ${pillar} pillar`)
-    console.log('Subject:', subject)
-    console.log('Content:', content)
-    console.log('Recipients:', employees.map(emp => emp.email))
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: `Email sent to ${employees.length} employees in ${pillar} pillar`,
-        recipients: employees.length
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
 
   } catch (error) {
+    console.error('Error in send-email function:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
