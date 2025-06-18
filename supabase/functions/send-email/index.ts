@@ -59,26 +59,30 @@ serve(async (req) => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              from: 'Company Admin <onboarding@resend.dev>',
-              to: employee.email,
+              from: 'Admin Portal <onboarding@resend.dev>',
+              to: [employee.email],
               subject: subject,
               html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h2 style="color: #8B4513;">Message from Company Administration</h2>
+                  <h2 style="color: #8B4513;">Message from Admin Portal</h2>
                   <p>Dear ${employee.name},</p>
                   <div style="background-color: #FDF5E6; padding: 20px; border-left: 4px solid #D2B48C; margin: 20px 0;">
                     ${content.replace(/\n/g, '<br>')}
                   </div>
-                  <p>Best regards,<br>Company Administration</p>
+                  <p>Best regards,<br>Admin Portal Team</p>
                 </div>
               `,
             }),
           })
           
+          const result = await response.json()
+          
           if (!response.ok) {
-            throw new Error(`Failed to send email to ${employee.email}`)
+            console.error(`Resend API error for ${employee.email}:`, result)
+            throw new Error(result.message || `HTTP ${response.status}: Failed to send email`)
           }
           
+          console.log(`Email sent successfully to ${employee.email}:`, result)
           return { success: true, email: employee.email }
         } catch (error) {
           console.error(`Failed to send email to ${employee.email}:`, error)
@@ -91,6 +95,11 @@ serve(async (req) => {
       const failureCount = results.filter(r => !r.success).length
       
       console.log(`Email sending completed: ${successCount} succeeded, ${failureCount} failed`)
+      
+      if (failureCount > 0) {
+        const failures = results.filter(r => !r.success)
+        console.log('Failed emails:', failures)
+      }
       
       return new Response(
         JSON.stringify({ 
