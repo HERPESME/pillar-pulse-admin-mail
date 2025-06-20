@@ -1,73 +1,135 @@
-# Welcome to your Lovable project
 
-## Project info
+# Corporate Communications Portal
 
-**URL**: https://lovable.dev/projects/ea20982d-758c-44f4-9d44-5d45f8c419d4
+A secure web-based administrative portal designed for corporate communications management. This application enables administrators to efficiently send targeted communications to employees organized by department pillars.
 
-## How can I edit this code?
+## Overview
 
-There are several ways of editing your application.
+The Corporate Communications Portal is a professional-grade web application that streamlines internal company communications. Administrators can log in securely, compose messages, and send them to specific department groups (pillars) with just a few clicks.
 
-**Use Lovable**
+## Key Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/ea20982d-758c-44f4-9d44-5d45f8c419d4) and start prompting.
+### 🔐 Secure Authentication
+- Admin-only access with email/password authentication
+- Role-based security ensuring only authorized personnel can send communications
+- Session management with automatic logout
 
-Changes made via Lovable will be committed automatically to this repo.
+### 📧 Email Management System
+- Compose and send emails to entire department pillars
+- Professional email templates with company branding
+- Real-time delivery status and confirmation
+- Support for rich text formatting in email content
 
-**Use your preferred IDE**
+### 🏢 Department Organization
+- Employee management organized by pillars/departments
+- Visual dashboard showing employee counts per pillar
+- Easy selection of target departments for communications
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 📊 Admin Dashboard
+- Clean, intuitive interface for administrators
+- Real-time statistics and employee counts
+- Email composition with live preview
+- Delivery tracking and success metrics
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Technology Stack
 
-Follow these steps:
+- **Frontend**: React 18 with TypeScript
+- **Styling**: Tailwind CSS with shadcn/ui components
+- **Backend**: Supabase (PostgreSQL database, authentication, edge functions)
+- **Email Service**: Resend API for reliable email delivery
+- **State Management**: TanStack Query for server state
+- **Routing**: React Router for navigation
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Getting Started
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Prerequisites
 
-# Step 3: Install the necessary dependencies.
-npm i
+- Node.js (v18 or higher)
+- npm or yarn package manager
+- Supabase project (for backend services)
+- Resend account (for email delivery)
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Installation
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd corporate-communications-portal
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Set up environment variables:
+- Configure your Supabase project credentials
+- Add your Resend API key to Supabase Edge Functions secrets
+
+4. Start the development server:
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The application will be available at `http://localhost:5173`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Configuration
 
-**Use GitHub Codespaces**
+### Database Setup
+The application uses Supabase as the backend with the following main tables:
+- `admin_users` - Stores administrator account information
+- `employees` - Contains employee data organized by pillars
+- Row Level Security (RLS) policies ensure data access control
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Email Configuration
+- Requires a valid Resend API key
+- Domain verification needed for reliable email delivery
+- Supports up to 3,000 emails per month on free tier
 
-## What technologies are used for this project?
+## Usage
 
-This project is built with:
+### For Administrators
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+1. **Login**: Access the admin portal with your credentials
+2. **Dashboard**: View employee statistics and pillar information
+3. **Compose**: Create your message with subject and content
+4. **Target**: Select which department pillar to send to
+5. **Send**: Deploy your communication with one click
+6. **Monitor**: Track delivery success and any failures
 
-## How can I deploy this project?
+### Pillar Management
+The system supports various department pillars such as:
+- Human Resources
+- Engineering
+- Marketing
+- Sales
+- Operations
+- And more...
 
-Simply open [Lovable](https://lovable.dev/projects/ea20982d-758c-44f4-9d44-5d45f8c419d4) and click on Share -> Publish.
+## Security Features
 
-## Can I connect a custom domain to my Lovable project?
+- **Authentication**: Secure login system with session management
+- **Authorization**: Role-based access control for admin functions
+- **Data Protection**: Row Level Security on all database operations
+- **API Security**: Protected endpoints with authentication verification
 
-Yes, you can!
+## Deployment
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+The application can be deployed to various platforms:
+- Vercel (recommended for frontend)
+- Netlify
+- Any static hosting service with Node.js support
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Supabase handles the backend infrastructure automatically.
+
+## Support
+
+For technical support or feature requests, contact your system administrator or development team.
+
+## License
+
+This software is proprietary and confidential. Unauthorized copying, distribution, or use is strictly prohibited.
+
+---
+
+*Corporate Communications Portal - Streamlining internal communications with security and efficiency.*
