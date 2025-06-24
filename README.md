@@ -1,4 +1,4 @@
-
+need changes
 # Corporate Communications Portal
 
 A secure web-based administrative portal designed for corporate communications management. This application enables administrators to efficiently send targeted communications to employees organized by department pillars.
