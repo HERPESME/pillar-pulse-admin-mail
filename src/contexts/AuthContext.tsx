@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import LoadingSpinner from '@/components/ui/loading-spinner';
 
 interface AuthContextType {
   user: User | null;
@@ -64,6 +65,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signIn,
     signOut,
   };
+
+  // Show a beautiful loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
+        <div className="text-center">
+          <LoadingSpinner size="lg" className="mx-auto mb-4" />
+          <p className="text-amber-700 font-medium">Verifying authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
