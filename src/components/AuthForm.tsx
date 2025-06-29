@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, Shield } from 'lucide-react';
 import LoadingSpinner from '@/components/ui/loading-spinner';
+import { authRateLimiter, validatePassword, isValidEmail } from '@/utils/security';
 
 const AuthForm = () => {
   const [email, setEmail] = useState('');
@@ -16,61 +17,71 @@ const AuthForm = () => {
   const [attemptCount, setAttemptCount] = useState(0);
   const { signIn } = useAuth();
 
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const validatePassword = (password: string): boolean => {
-    return password.length >= 6;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Rate limiting - simple client-side check
-    if (attemptCount >= 5) {
-      setError('Too many failed attempts. Please wait before trying again.');
+    // Enhanced rate limiting
+    const clientId = `${navigator.userAgent}_${window.location.hostname}`;
+    if (authRateLimiter.isRateLimited(clientId, 5, 900000)) { // 15 minutes
+      setError('Too many failed attempts. Please wait 15 minutes before trying again.');
       return;
     }
     
     setLoading(true);
     setError('');
 
-    // Input validation
-    if (!validateEmail(email)) {
+    // Enhanced input validation
+    if (!isValidEmail(email)) {
       setError('Please enter a valid email address');
       setLoading(false);
       return;
     }
 
-    if (!validatePassword(password)) {
-      setError('Password must be at least 6 characters long');
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      setError('Password does not meet security requirements');
+      setLoading(false);
+      return;
+    }
+
+    // Additional security checks
+    if (email.length > 254 || password.length > 128) {
+      setError('Input too long');
       setLoading(false);
       return;
     }
 
     try {
       setAuthenticating(true);
-      const { error } = await signIn(email, password);
+      const { error } = await signIn(email.trim().toLowerCase(), password);
       
       if (error) {
         setAttemptCount(prev => prev + 1);
         setAuthenticating(false);
         
-        // Sanitize error messages to prevent information disclosure
+        // Generic error messages to prevent information disclosure
         if (error.message.includes('Invalid login credentials')) {
           setError('Invalid email or password. Please check your credentials and try again.');
         } else if (error.message.includes('Email not confirmed')) {
           setError('Please confirm your email address before signing in.');
         } else if (error.message.includes('Too many requests')) {
           setError('Too many sign-in attempts. Please wait before trying again.');
+        } else if (error.message.includes('signup_disabled')) {
+          setError('Account registration is currently disabled.');
         } else {
           setError('Sign-in failed. Please check your credentials and try again.');
         }
+        
+        // Log failed attempt for monitoring
+        console.warn('Authentication failed:', {
+          timestamp: new Date().toISOString(),
+          email: email.substring(0, 3) + '***', // Partial email for logging
+          userAgent: navigator.userAgent.substring(0, 100)
+        });
       } else {
         // Reset attempt count on successful login
         setAttemptCount(0);
+        authRateLimiter.resetAttempts(clientId);
         // Keep authenticating state true - the AuthContext will handle the transition
       }
     } catch (error) {
@@ -200,6 +211,8 @@ const AuthForm = () => {
                 disabled={loading || isRateLimited}
                 className="transition-colors"
                 autoComplete="email"
+                maxLength={254}
+                pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
               />
             </div>
             <div className="space-y-2">
@@ -213,7 +226,8 @@ const AuthForm = () => {
                 disabled={loading || isRateLimited}
                 className="transition-colors"
                 autoComplete="current-password"
-                minLength={6}
+                minLength={8}
+                maxLength={128}
               />
             </div>
             {error && (
@@ -224,7 +238,7 @@ const AuthForm = () => {
             )}
             {isRateLimited && (
               <div className="text-amber-600 text-sm bg-amber-50 p-3 rounded-md border border-amber-200">
-                Security measure activated. Please wait a few minutes before attempting to sign in again.
+                Security measure activated. Please wait before attempting to sign in again.
               </div>
             )}
             <Button 

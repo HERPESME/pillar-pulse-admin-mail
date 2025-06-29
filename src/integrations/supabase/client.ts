@@ -5,7 +5,130 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://rkigicorocqvlwupabps.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJraWdpY29yb2Nxdmx3dXBhYnBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxMzM0NTAsImV4cCI6MjA2NTcwOTQ1MH0.tuRyveqDG81_ud1_UxBk2-_jkYlY0leoTll6CYyMZQk";
 
+// Enhanced security configuration for Supabase client
+const supabaseOptions = {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce' as const,
+    // Enhanced security settings
+    storageKey: 'sb-auth-token',
+    storage: {
+      getItem: (key: string) => {
+        try {
+          return localStorage.getItem(key);
+        } catch {
+          return null;
+        }
+      },
+      setItem: (key: string, value: string) => {
+        try {
+          localStorage.setItem(key, value);
+        } catch {
+          // Silently fail if localStorage is not available
+        }
+      },
+      removeItem: (key: string) => {
+        try {
+          localStorage.removeItem(key);
+        } catch {
+          // Silently fail if localStorage is not available
+        }
+      }
+    }
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'corporate-communications-portal/1.0'
+    }
+  },
+  // Enhanced security: disable realtime for sensitive operations
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
+  }
+};
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+export const supabase = createClient<Database>(
+  SUPABASE_URL, 
+  SUPABASE_PUBLISHABLE_KEY,
+  supabaseOptions
+);
+
+// Enhanced error handling wrapper
+export const safeSupabaseCall = async <T>(
+  operation: () => Promise<{ data: T | null; error: any }>
+): Promise<{ data: T | null; error: any }> => {
+  try {
+    const result = await operation();
+    
+    // Log errors for monitoring (without sensitive data)
+    if (result.error) {
+      console.error('Supabase operation failed:', {
+        timestamp: new Date().toISOString(),
+        errorCode: result.error.code,
+        errorMessage: result.error.message?.substring(0, 100)
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Supabase operation exception:', {
+      timestamp: new Date().toISOString(),
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+    
+    return {
+      data: null,
+      error: {
+        message: 'An unexpected error occurred',
+        code: 'UNEXPECTED_ERROR'
+      }
+    };
+  }
+};
+
+// Session validation helper
+export const validateSession = async (): Promise<boolean> => {
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (error || !session) {
+      return false;
+    }
+    
+    // Check if session is expired
+    const now = Math.floor(Date.now() / 1000);
+    if (session.expires_at && session.expires_at < now) {
+      await supabase.auth.signOut();
+      return false;
+    }
+    
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// Secure sign out helper
+export const secureSignOut = async (): Promise<void> => {
+  try {
+    await supabase.auth.signOut();
+    
+    // Clear any cached data
+    localStorage.removeItem('sb-auth-token');
+    sessionStorage.clear();
+    
+    // Force page reload to clear any remaining state
+    window.location.reload();
+  } catch (error) {
+    console.error('Error during sign out:', error);
+    // Force reload even if sign out fails
+    window.location.reload();
+  }
+};

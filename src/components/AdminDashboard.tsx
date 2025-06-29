@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, safeSupabaseCall } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import Header from './dashboard/Header';
 import EmailComposer from './dashboard/EmailComposer';
@@ -10,6 +9,7 @@ import EmployeeStats from './dashboard/EmployeeStats';
 import EmailPreview from './dashboard/EmailPreview';
 import Footer from './dashboard/Footer';
 import ErrorDisplay from './dashboard/ErrorDisplay';
+import { sanitizeHtml, validateEmailContent, validatePillarName } from '@/utils/security';
 
 interface Employee {
   id: string;
@@ -43,27 +43,48 @@ const AdminDashboard = () => {
     try {
       console.log('Fetching employees...');
       
-      const { data, error } = await supabase
-        .from('employees')
-        .select('*')
-        .order('pillar', { ascending: true });
+      const result = await safeSupabaseCall(() =>
+        supabase
+          .from('employees')
+          .select('*')
+          .order('pillar', { ascending: true })
+          .limit(1000) // Prevent excessive data retrieval
+      );
 
-      console.log('Supabase response:', { data, error });
+      console.log('Supabase response:', result);
 
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
+      if (result.error) {
+        console.error('Supabase error:', result.error);
+        throw new Error(result.error.message || 'Database error');
       }
 
-      setEmployees(data || []);
+      const data = result.data || [];
       
-      // Extract unique pillars dynamically
-      const uniquePillars = [...new Set(data?.map(emp => emp.pillar) || [])];
+      // Validate and sanitize employee data
+      const validatedEmployees = data.filter(emp => {
+        return emp.id && 
+               emp.name && 
+               emp.email && 
+               emp.pillar && 
+               emp.level &&
+               validatePillarName(emp.pillar);
+      }).map(emp => ({
+        ...emp,
+        name: sanitizeHtml(emp.name),
+        pillar: sanitizeHtml(emp.pillar),
+        level: sanitizeHtml(emp.level)
+      }));
+
+      setEmployees(validatedEmployees);
+      
+      // Extract unique pillars dynamically with validation
+      const uniquePillars = [...new Set(validatedEmployees.map(emp => emp.pillar))]
+        .filter(pillar => validatePillarName(pillar));
       setPillars(uniquePillars);
       
       toast({
         title: 'Success',
-        description: `Loaded ${data?.length || 0} employees across ${uniquePillars.length} pillars`,
+        description: `Loaded ${validatedEmployees.length} employees across ${uniquePillars.length} pillars`,
       });
     } catch (error: any) {
       console.error('Error fetching employees:', error);
@@ -72,7 +93,7 @@ const AdminDashboard = () => {
       
       toast({
         title: 'Error',
-        description: errorMessage,
+        description: 'Unable to load employee data. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -81,19 +102,21 @@ const AdminDashboard = () => {
   };
 
   const handleSendEmail = async (pillar: string) => {
-    if (!emailContent.trim()) {
+    // Enhanced validation
+    const validationErrors = validateEmailContent(subject, emailContent);
+    if (validationErrors.length > 0) {
       toast({
-        title: 'Error',
-        description: 'Please enter email content before sending',
+        title: 'Validation Error',
+        description: validationErrors[0],
         variant: 'destructive',
       });
       return;
     }
 
-    if (!subject.trim()) {
+    if (!validatePillarName(pillar)) {
       toast({
-        title: 'Error', 
-        description: 'Please enter email subject before sending',
+        title: 'Error',
+        description: 'Invalid pillar selection',
         variant: 'destructive',
       });
       return;
@@ -103,20 +126,39 @@ const AdminDashboard = () => {
     setLoadingPillars(prev => new Set(prev).add(pillar));
     const pillarEmployees = employees.filter(emp => emp.pillar === pillar);
 
-    try {
-      const { data, error } = await supabase.functions.invoke('send-email', {
-        body: {
-          pillar,
-          subject,
-          content: emailContent
-        }
+    if (pillarEmployees.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'No employees found in selected pillar',
+        variant: 'destructive',
       });
+      setLoadingPillars(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(pillar);
+        return newSet;
+      });
+      return;
+    }
 
-      if (error) throw error;
+    try {
+      const result = await safeSupabaseCall(() =>
+        supabase.functions.invoke('send-email', {
+          body: {
+            pillar: sanitizeHtml(pillar),
+            subject: sanitizeHtml(subject),
+            content: sanitizeHtml(emailContent)
+          }
+        })
+      );
 
+      if (result.error) {
+        throw new Error(result.error.message || 'Failed to send emails');
+      }
+
+      const data = result.data;
       toast({
         title: 'Success!',
-        description: data.message || `Email sent to ${pillarEmployees.length} employees in ${pillar} pillar`,
+        description: data?.message || `Email sent to ${pillarEmployees.length} employees in ${pillar} pillar`,
       });
 
       console.log('Email sent successfully:', data);
@@ -125,7 +167,7 @@ const AdminDashboard = () => {
       console.error('Error sending email:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to send emails',
+        description: 'Failed to send emails. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -139,8 +181,26 @@ const AdminDashboard = () => {
   };
 
   const handlePreview = (pillar: string) => {
+    if (!validatePillarName(pillar)) {
+      toast({
+        title: 'Error',
+        description: 'Invalid pillar selection',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setSelectedPillar(pillar);
     setPreviewMode(true);
+  };
+
+  // Enhanced input handlers with sanitization
+  const handleSubjectChange = (newSubject: string) => {
+    setSubject(newSubject);
+  };
+
+  const handleContentChange = (newContent: string) => {
+    setEmailContent(newContent);
   };
 
   return (
@@ -160,8 +220,8 @@ const AdminDashboard = () => {
             <EmailComposer
               subject={subject}
               emailContent={emailContent}
-              onSubjectChange={setSubject}
-              onContentChange={setEmailContent}
+              onSubjectChange={handleSubjectChange}
+              onContentChange={handleContentChange}
             />
 
             <PillarGrid
