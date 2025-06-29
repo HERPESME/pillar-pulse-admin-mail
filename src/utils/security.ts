@@ -94,7 +94,7 @@ export const validateEmailContent = (subject: string, content: string): string[]
   }
   
   // Check for excessive special characters (potential obfuscation)
-  const specialCharCount = (combinedText.match(/[^\w\s.,!?;:()\-]/g) || []).length;
+  const specialCharCount = (combinedText.match(/[^\w\s.,!?;:()\\-]/g) || []).length;
   if (specialCharCount > combinedText.length * 0.1) {
     errors.push('Content contains too many special characters');
   }

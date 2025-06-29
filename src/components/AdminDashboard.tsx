@@ -43,13 +43,15 @@ const AdminDashboard = () => {
     try {
       console.log('Fetching employees...');
       
-      const result = await safeSupabaseCall(() =>
-        supabase
+      const result = await safeSupabaseCall(async () => {
+        const query = supabase
           .from('employees')
           .select('*')
           .order('pillar', { ascending: true })
-          .limit(1000) // Prevent excessive data retrieval
-      );
+          .limit(1000);
+        
+        return await query;
+      });
 
       console.log('Supabase response:', result);
 
@@ -61,25 +63,29 @@ const AdminDashboard = () => {
       const data = result.data || [];
       
       // Validate and sanitize employee data
-      const validatedEmployees = data.filter((emp: any) => {
-        return emp.id && 
-               emp.name && 
-               emp.email && 
-               emp.pillar && 
-               emp.level &&
-               validatePillarName(emp.pillar);
-      }).map((emp: any) => ({
-        ...emp,
-        name: sanitizeHtml(emp.name),
-        pillar: sanitizeHtml(emp.pillar),
-        level: sanitizeHtml(emp.level)
-      }));
+      const validatedEmployees: Employee[] = data
+        .filter((emp: any) => {
+          return emp.id && 
+                 emp.name && 
+                 emp.email && 
+                 emp.pillar && 
+                 emp.level &&
+                 validatePillarName(emp.pillar);
+        })
+        .map((emp: any) => ({
+          id: emp.id,
+          name: sanitizeHtml(emp.name),
+          email: emp.email,
+          employee_id: emp.employee_id,
+          pillar: sanitizeHtml(emp.pillar),
+          level: sanitizeHtml(emp.level)
+        }));
 
       setEmployees(validatedEmployees);
       
       // Extract unique pillars dynamically with validation
       const uniquePillars = [...new Set(validatedEmployees.map((emp: Employee) => emp.pillar))]
-        .filter(pillar => validatePillarName(pillar));
+        .filter((pillar: string) => validatePillarName(pillar));
       setPillars(uniquePillars);
       
       toast({
