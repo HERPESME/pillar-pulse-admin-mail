@@ -42,7 +42,7 @@ export const isValidEmail = (email: string): boolean => {
 };
 
 // Enhanced content validation for email composition
-export const validateEmailContent = (subject: string, content: string) => {
+export const validateEmailContent = (subject: string, content: string): string[] => {
   const errors: string[] = [];
   
   // Subject validation
@@ -104,7 +104,7 @@ export const validateEmailContent = (subject: string, content: string) => {
 // Enhanced rate limiting with memory cleanup
 export class RateLimiter {
   private attempts: Map<string, { count: number; lastAttempt: number }> = new Map();
-  private cleanupInterval: number;
+  private cleanupInterval: NodeJS.Timeout | null = null;
   
   constructor() {
     // Clean up old entries every 5 minutes
@@ -159,6 +159,7 @@ export class RateLimiter {
   destroy(): void {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
     }
     this.attempts.clear();
   }

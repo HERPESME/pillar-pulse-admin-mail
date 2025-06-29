@@ -61,14 +61,14 @@ const AdminDashboard = () => {
       const data = result.data || [];
       
       // Validate and sanitize employee data
-      const validatedEmployees = data.filter(emp => {
+      const validatedEmployees = data.filter((emp: any) => {
         return emp.id && 
                emp.name && 
                emp.email && 
                emp.pillar && 
                emp.level &&
                validatePillarName(emp.pillar);
-      }).map(emp => ({
+      }).map((emp: any) => ({
         ...emp,
         name: sanitizeHtml(emp.name),
         pillar: sanitizeHtml(emp.pillar),
@@ -78,7 +78,7 @@ const AdminDashboard = () => {
       setEmployees(validatedEmployees);
       
       // Extract unique pillars dynamically with validation
-      const uniquePillars = [...new Set(validatedEmployees.map(emp => emp.pillar))]
+      const uniquePillars = [...new Set(validatedEmployees.map((emp: Employee) => emp.pillar))]
         .filter(pillar => validatePillarName(pillar));
       setPillars(uniquePillars);
       

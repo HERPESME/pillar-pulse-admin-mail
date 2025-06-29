@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Mail, Shield } from 'lucide-react';
-import { validateEmailContent, sanitizeHtml } from '@/utils/security';
+import { validateEmailContent } from '@/utils/security';
 
 interface EmailComposerProps {
   subject: string;
@@ -59,7 +59,7 @@ const EmailComposer = ({ subject, emailContent, onSubjectChange, onContentChange
             className="w-full"
             maxLength={200}
             autoComplete="off"
-            spellCheck="true"
+            spellCheck={true}
           />
           <div className="flex justify-between text-xs text-gray-500">
             <span>Subject line for your communication</span>
@@ -81,7 +81,7 @@ const EmailComposer = ({ subject, emailContent, onSubjectChange, onContentChange
             className="min-h-32 w-full resize-none"
             maxLength={10000}
             autoComplete="off"
-            spellCheck="true"
+            spellCheck={true}
           />
           <div className="flex justify-between text-xs text-gray-500">
             <span>Your message will be automatically formatted for email delivery</span>
