@@ -1,4 +1,3 @@
-
 /**
  * Enhanced security utilities for input validation and sanitization
  */
@@ -94,8 +93,8 @@ export const validateEmailContent = (subject: string, content: string): string[]
   }
   
   // Check for excessive special characters (potential obfuscation)
-  // Fixed regex: place hyphen at the end of character class to avoid range interpretation
-  const specialCharCount = (combinedText.match(/[^\w\s.,!?;:()-]/g) || []).length;
+  // Fixed regex: escape the hyphen or move to start/end of character class
+  const specialCharCount = (combinedText.match(/[^\w\s.,!?;:()\-]/g) || []).length;
   if (specialCharCount > combinedText.length * 0.1) {
     errors.push('Content contains too many special characters');
   }
