@@ -88,8 +88,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         // Security: Clear sensitive data on sign out
         if (event === 'SIGNED_OUT') {
-          localStorage.removeItem('sb-auth-token');
-          sessionStorage.clear();
+          try {
+            localStorage.removeItem('sb-auth-token');
+            sessionStorage.clear();
+          } catch {
+            // Ignore storage errors
+          }
         }
       }
     );
@@ -137,7 +141,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       return { error };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sign in exception:', error);
       return { 
         error: { 

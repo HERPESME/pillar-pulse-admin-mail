@@ -77,7 +77,7 @@ export const safeSupabaseCall = async <T>(
     }
     
     return result;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Supabase operation exception:', {
       timestamp: new Date().toISOString(),
       error: error instanceof Error ? error.message : 'Unknown error'

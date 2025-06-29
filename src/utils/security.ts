@@ -104,7 +104,7 @@ export const validateEmailContent = (subject: string, content: string): string[]
 // Enhanced rate limiting with memory cleanup
 export class RateLimiter {
   private attempts: Map<string, { count: number; lastAttempt: number }> = new Map();
-  private cleanupInterval: NodeJS.Timeout | null = null;
+  private cleanupInterval: any = null;
   
   constructor() {
     // Clean up old entries every 5 minutes
