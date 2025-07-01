@@ -12,6 +12,7 @@ export const sanitizeHtml = (input: string): string => {
     .replace(/>/g, '>')
     .replace(/"/g, '"')
     .replace(/'/g, ''')
+    )
     .replace(/\//g, '/')
     .replace(/`/g, '`')
     .replace(/=/g, '&#x3D;')
