@@ -14,7 +14,7 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Linting - Completely relaxed */
+    /* Linting - Relaxed for build */
     "strict": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
@@ -28,6 +28,7 @@
     "noImplicitThis": false,
     "useUnknownInCatchVariables": false,
     "alwaysStrict": false,
+    "noUnusedLocals": false,
     "noImplicitOverride": false,
 
     "baseUrl": ".",

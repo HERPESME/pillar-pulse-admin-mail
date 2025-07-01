@@ -7,13 +7,13 @@ export const sanitizeHtml = (input: string): string => {
   if (!input || typeof input !== 'string') return '';
   
   return input
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;')
-    .replace(/`/g, '&#x60;')
+    .replace(/&/g, '&')
+    .replace(/</g, '<')
+    .replace(/>/g, '>')
+    .replace(/"/g, '"')
+    .replace(/'/g, ''')
+    .replace(/\//g, '/')
+    .replace(/`/g, '`')
     .replace(/=/g, '&#x3D;')
     // Remove potentially dangerous protocols
     .replace(/javascript:/gi, '')
@@ -93,6 +93,7 @@ export const validateEmailContent = (subject: string, content: string): string[]
   }
   
   // Check for excessive special characters (potential obfuscation)
+  // Fixed regex: escape the hyphen or move to start/end of character class
   const specialCharCount = (combinedText.match(/[^\w\s.,!?;:()\-]/g) || []).length;
   if (specialCharCount > combinedText.length * 0.1) {
     errors.push('Content contains too many special characters');
@@ -101,10 +102,10 @@ export const validateEmailContent = (subject: string, content: string): string[]
   return errors;
 };
 
-// Simple rate limiting without complex types
+// Enhanced rate limiting with memory cleanup
 export class RateLimiter {
   private attempts: Map<string, { count: number; lastAttempt: number }> = new Map();
-  private cleanupInterval: any = null;
+  private cleanupInterval: NodeJS.Timeout | null = null;
   
   constructor() {
     // Clean up old entries every 5 minutes
