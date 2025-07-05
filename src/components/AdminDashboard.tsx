@@ -219,7 +219,12 @@ const AdminDashboard = () => {
     }
 
     try {
-      const result = await safeSupabaseCall(() =>
+      // Add a 20-second timeout to the API call
+      const timeoutMs = 20000;
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out. Please try again.')), timeoutMs)
+      );
+      const apiPromise = safeSupabaseCall(() =>
         supabase.functions.invoke('send-email', {
           body: {
             pillar: sanitizeHtml(pillar),
@@ -228,12 +233,13 @@ const AdminDashboard = () => {
           }
         })
       );
+      const result: any = await Promise.race([apiPromise, timeoutPromise]);
 
-      if (result.error) {
+      if (result && typeof result === 'object' && 'error' in result && result.error) {
         throw new Error(result.error.message || 'Failed to send emails');
       }
 
-      const data = result.data;
+      const data = result && typeof result === 'object' && 'data' in result ? result.data : undefined;
       toast({
         title: 'Success!',
         description: data?.message || `Email sent to ${pillarEmployees.length} employees in ${pillar} pillar`,
@@ -245,7 +251,7 @@ const AdminDashboard = () => {
       console.error('Error sending email:', error);
       toast({
         title: 'Error',
-        description: 'Failed to send emails. Please try again.',
+        description: error?.message || 'Failed to send emails. Please try again.',
         variant: 'destructive',
       });
     } finally {
