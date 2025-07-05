@@ -7,14 +7,13 @@ export const sanitizeHtml = (input: string): string => {
   if (!input || typeof input !== 'string') return '';
   
   return input
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>')
-    .replace(/"/g, '"')
-    .replace(/'/g, ''')
-    )
-    .replace(/\//g, '/')
-    .replace(/`/g, '`')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;')
+    .replace(/`/g, '&#x60;')
     .replace(/=/g, '&#x3D;')
     // Remove potentially dangerous protocols
     .replace(/javascript:/gi, '')
@@ -94,8 +93,8 @@ export const validateEmailContent = (subject: string, content: string): string[]
   }
   
   // Check for excessive special characters (potential obfuscation)
-  // Fixed regex: escape the hyphen or move to start/end of character class
-  const specialCharCount = (combinedText.match(/[^\w\s.,!?;:()\-]/g) || []).length;
+  // Fixed regex: move hyphen to the end of character class to avoid range interpretation
+  const specialCharCount = (combinedText.match(/[^\w\s.,!?;:()-]/g) || []).length;
   if (specialCharCount > combinedText.length * 0.1) {
     errors.push('Content contains too many special characters');
   }
