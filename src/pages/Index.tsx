@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import AuthForm from '@/components/AuthForm';
 import AdminDashboard from '@/components/AdminDashboard';
 
-const AppContent = () => {
+const AppContent = React.memo(() => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -22,7 +22,9 @@ const AppContent = () => {
   }
 
   return <AdminDashboard />;
-};
+});
+
+AppContent.displayName = 'AppContent';
 
 const Index = () => {
   return (
