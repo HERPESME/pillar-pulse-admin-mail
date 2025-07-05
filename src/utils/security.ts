@@ -93,8 +93,8 @@ export const validateEmailContent = (subject: string, content: string): string[]
   }
   
   // Check for excessive special characters (potential obfuscation)
-  // Fixed regex: move hyphen to the end of character class to avoid range interpretation
-  const specialCharCount = (combinedText.match(/[^\w\s.,!?;:()-]/g) || []).length;
+  // Fixed regex: escape the hyphen to avoid range interpretation
+  const specialCharCount = (combinedText.match(/[^\w\s.,!?;:()\-]/g) || []).length;
   if (specialCharCount > combinedText.length * 0.1) {
     errors.push('Content contains too many special characters');
   }
@@ -174,7 +174,7 @@ export const sanitizeDbInput = (input: string): string => {
   
   return input
     .replace(/['"\\]/g, '') // Remove quotes and backslashes
-    .replace(/[;--]/g, '') // Remove SQL comment markers
+    .replace(/[;]|--/g, '') // Remove SQL comment markers
     .replace(/\0/g, '') // Remove null bytes
     .trim()
     .substring(0, 1000); // Limit length
