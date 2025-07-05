@@ -9,6 +9,9 @@ const corsHeaders = {
   'Access-Control-Max-Age': '86400',
 }
 
+// IMPORTANT: This function must be deployed to Supabase's cloud environment for production use.
+// Ensure SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GMAIL_USER, and GMAIL_APP_PASSWORD are set in the Supabase Edge Function environment.
+
 // Enhanced HTML sanitization to prevent XSS
 function sanitizeHtml(input: string): string {
   if (!input || typeof input !== 'string') return '';
@@ -179,10 +182,11 @@ serve(async (req) => {
     // Initialize Supabase client with secure configuration
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('Missing required environment variables')
-      return createErrorResponse('Service configuration error', 500)
+    const gmailUser = Deno.env.get('GMAIL_USER')
+    const gmailPassword = Deno.env.get('GMAIL_APP_PASSWORD')
+    if (!supabaseUrl || !supabaseServiceKey || !gmailUser || !gmailPassword) {
+      console.error('Missing required environment variables. SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GMAIL_USER, and GMAIL_APP_PASSWORD must be set.');
+      return createErrorResponse('Service configuration error: missing environment variables', 500)
     }
 
     const supabaseClient = createClient(supabaseUrl, supabaseServiceKey)
@@ -292,9 +296,6 @@ serve(async (req) => {
     }, req)
 
     // Check if Gmail credentials are available
-    const gmailUser = Deno.env.get('GMAIL_USER')
-    const gmailPassword = Deno.env.get('GMAIL_APP_PASSWORD')
-    
     if (gmailUser && gmailPassword) {
       // Configure SMTP client
       await smtpClient.connectTLS({
