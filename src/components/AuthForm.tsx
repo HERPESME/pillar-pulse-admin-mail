@@ -37,12 +37,8 @@ const AuthForm = () => {
       return;
     }
 
-    const passwordValidation = validatePassword(password);
-    if (!passwordValidation.isValid) {
-      setError('Password does not meet security requirements');
-      setLoading(false);
-      return;
-    }
+    // Note: Password validation is only for sign-up, not sign-in
+    // For sign-in, we let Supabase handle authentication
 
     // Additional security checks
     if (email.length > 254 || password.length > 128) {
