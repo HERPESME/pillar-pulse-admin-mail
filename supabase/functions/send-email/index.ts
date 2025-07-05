@@ -299,7 +299,7 @@ serve(async (req) => {
       // Configure SMTP client
       await smtpClient.connectTLS({
         hostname: "smtp.gmail.com",
-        port: 587,
+        port: 465, // Use 465 for SSL/TLS
         username: gmailUser,
         password: gmailPassword,
       });
