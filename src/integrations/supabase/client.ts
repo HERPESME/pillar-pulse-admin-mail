@@ -93,23 +93,14 @@ export const safeSupabaseCall = async <T>(
   }
 };
 
-// Session validation helper
+// Session validation helper - simplified to let Supabase handle token refresh
 export const validateSession = async (): Promise<boolean> => {
   try {
     const { data: { session }, error } = await supabase.auth.getSession();
     
-    if (error || !session) {
-      return false;
-    }
-    
-    // Check if session is expired
-    const now = Math.floor(Date.now() / 1000);
-    if (session.expires_at && session.expires_at < now) {
-      await supabase.auth.signOut();
-      return false;
-    }
-    
-    return true;
+    // Let Supabase handle token refresh automatically
+    // Don't manually check expiration - this was causing valid sessions to be terminated
+    return !error && !!session;
   } catch {
     return false;
   }
