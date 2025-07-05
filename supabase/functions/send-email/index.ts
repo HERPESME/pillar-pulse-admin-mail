@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -161,6 +162,9 @@ function createErrorResponse(message: string, status: number = 400, logDetails?:
   )
 }
 
+// Gmail SMTP configuration
+const smtpClient = new SmtpClient();
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -287,11 +291,20 @@ serve(async (req) => {
       recipientCount: employees.length 
     }, req)
 
-    // Check if RESEND_API_KEY is available
-    const resendApiKey = Deno.env.get('RESEND_API_KEY')
+    // Check if Gmail credentials are available
+    const gmailUser = Deno.env.get('GMAIL_USER')
+    const gmailPassword = Deno.env.get('GMAIL_APP_PASSWORD')
     
-    if (resendApiKey) {
-      // Send actual emails using Resend with enhanced security
+    if (gmailUser && gmailPassword) {
+      // Configure SMTP client
+      await smtpClient.connectTLS({
+        hostname: "smtp.gmail.com",
+        port: 587,
+        username: gmailUser,
+        password: gmailPassword,
+      });
+
+      // Send actual emails using Gmail SMTP
       const emailPromises = employees.map(async (employee) => {
         try {
           // Validate employee email format
@@ -307,42 +320,45 @@ serve(async (req) => {
             .replace(/\r/g, '')
           const sanitizedName = sanitizeHtml(employee.name)
           
-          const response = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${resendApiKey}`,
-              'Content-Type': 'application/json',
-              'User-Agent': 'Corporate-Communications-Portal/1.0'
-            },
-            body: JSON.stringify({
-              from: 'Admin Portal <onboarding@resend.dev>',
-              to: [employee.email],
-              subject: sanitizedSubject,
-              html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-                  <div style="background-color: #f8f9fa; padding: 20px; border-bottom: 3px solid #d97706;">
-                    <h2 style="color: #8B4513; margin: 0;">Message from Admin Portal</h2>
-                  </div>
-                  <div style="padding: 20px;">
-                    <p>Dear ${sanitizedName},</p>
-                    <div style="background-color: #FDF5E6; padding: 20px; border-left: 4px solid #D2B48C; margin: 20px 0; border-radius: 4px;">
-                      ${sanitizedContent}
-                    </div>
-                    <p>Best regards,<br>Admin Portal Team</p>
-                  </div>
-                  <div style="background-color: #f8f9fa; padding: 10px; text-align: center; font-size: 12px; color: #666;">
-                    This email was sent from the Corporate Communications Portal
-                  </div>
+          await smtpClient.send({
+            from: gmailUser,
+            to: employee.email,
+            subject: sanitizedSubject,
+            content: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                <div style="background-color: #f8f9fa; padding: 20px; border-bottom: 3px solid #d97706;">
+                  <h2 style="color: #8B4513; margin: 0;">Message from Admin Portal</h2>
                 </div>
-              `,
-            }),
-          })
-          
-          if (!response.ok) {
-            const errorText = await response.text()
-            console.error(`Resend API error for ${employee.email}: ${response.status}`)
-            throw new Error(`HTTP ${response.status}: Email service error`)
-          }
+                <div style="padding: 20px;">
+                  <p>Dear ${sanitizedName},</p>
+                  <div style="background-color: #FDF5E6; padding: 20px; border-left: 4px solid #D2B48C; margin: 20px 0; border-radius: 4px;">
+                    ${sanitizedContent}
+                  </div>
+                  <p>Best regards,<br>Admin Portal Team</p>
+                </div>
+                <div style="background-color: #f8f9fa; padding: 10px; text-align: center; font-size: 12px; color: #666;">
+                  This email was sent from the Corporate Communications Portal
+                </div>
+              </div>
+            `,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                <div style="background-color: #f8f9fa; padding: 20px; border-bottom: 3px solid #d97706;">
+                  <h2 style="color: #8B4513; margin: 0;">Message from Admin Portal</h2>
+                </div>
+                <div style="padding: 20px;">
+                  <p>Dear ${sanitizedName},</p>
+                  <div style="background-color: #FDF5E6; padding: 20px; border-left: 4px solid #D2B48C; margin: 20px 0; border-radius: 4px;">
+                    ${sanitizedContent}
+                  </div>
+                  <p>Best regards,<br>Admin Portal Team</p>
+                </div>
+                <div style="background-color: #f8f9fa; padding: 10px; text-align: center; font-size: 12px; color: #666;">
+                  This email was sent from the Corporate Communications Portal
+                </div>
+              </div>
+            `,
+          });
           
           return { success: true, email: employee.email }
         } catch (error) {
@@ -354,6 +370,9 @@ serve(async (req) => {
       const results = await Promise.all(emailPromises)
       const successCount = results.filter(r => r.success).length
       const failureCount = results.filter(r => !r.success).length
+      
+      // Close SMTP connection
+      await smtpClient.close();
       
       // Log the final result
       await logAdminAction(supabaseClient, user.id, 'email_send_completed', { 
@@ -373,11 +392,11 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     } else {
-      // Fallback: Log email details (for testing without Resend)
+      // Fallback: Log email details (for testing without Gmail credentials)
       await logAdminAction(supabaseClient, user.id, 'email_send_simulated', { 
         pillar: sanitizeHtml(pillar), 
         recipientCount: employees.length,
-        note: 'RESEND_API_KEY not configured'
+        note: 'Gmail credentials not configured'
       }, req)
 
       return new Response(
@@ -385,7 +404,7 @@ serve(async (req) => {
           success: true, 
           message: `Email simulated for ${employees.length} employees`,
           recipients: employees.length,
-          note: 'Configure RESEND_API_KEY to send actual emails'
+          note: 'Configure GMAIL_USER and GMAIL_APP_PASSWORD to send actual emails'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )

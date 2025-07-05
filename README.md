@@ -295,8 +295,9 @@ This software is proprietary and confidential. Unauthorized copying, distributio
 - Ensure admin user exists in `admin_users` table
 
 **Email Delivery Issues**
-- Verify Resend API key is configured
-- Check domain verification status
+- Verify Gmail credentials are configured
+- Check if 2FA is enabled on Gmail account
+- Ensure app password is correctly generated
 - Review email content for spam triggers
 
 **Authentication Problems**
